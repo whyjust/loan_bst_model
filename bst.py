@@ -40,19 +40,15 @@ def BST(dnn_feature_columns, history_feature_list, transformer_num=1, att_head_n
         else:
             sparse_varlen_feature_columns.append(fc)
     
-    # embedding_dict
+    # 获取query hist与dnn对应的embedding矩阵
     embedding_dict = create_embedding_matrix(
-        dnn_feature_columns, l2_reg_embedding, prefix="", seq_mask_zero=True
-        )
+        dnn_feature_columns, l2_reg_embedding, prefix="", seq_mask_zero=True)
     query_emb_list = embedding_lookup(
-        embedding_dict, features, sparse_feature_columns, return_feat_list=history_feature_list, to_list=True
-        )
+        embedding_dict, features, sparse_feature_columns, return_feat_list=history_feature_list, to_list=True)
     hist_emb_list = embedding_lookup(
-        embedding_dict, features, history_feature_columns, return_feat_list=history_fc_names, to_list=True
-        )
+        embedding_dict, features, history_feature_columns, return_feat_list=history_fc_names, to_list=True)
     dnn_input_emb_list = embedding_lookup(
-        embedding_dict, features, sparse_feature_columns, mask_feat_list=history_feature_list, to_list=True
-        )
+        embedding_dict, features, sparse_feature_columns, mask_feat_list=history_feature_list, to_list=True)
     return query_emb_list, hist_emb_list, dnn_input_emb_list
 
 
