@@ -20,7 +20,7 @@ class SparseFeat(namedtuple('SparseFeat', ['name', 'vocabulary_size', 'embedding
         if embedding_dim == "auto":
             embedding_dim = 6 * int(pow(vocabulary_size, 0.25))
         if embeddings_initializer is None:
-            embeddings_initializer = RandomNormal(mean=0.0, steddev=0.0001, seed=2020)
+            embeddings_initializer = RandomNormal(mean=0.0, stddev=0.0001, seed=2020)
         
         if embedding_name is None:
             embedding_name = name

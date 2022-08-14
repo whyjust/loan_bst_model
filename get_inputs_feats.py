@@ -109,7 +109,7 @@ def create_embedding_matrix(feature_columns, l2_reg, prefix="", seq_mask_zero=Tr
                                             l2_reg, prefix=prefix+'sparse', seq_mask_zero=seq_mask_zero)
     return sparse_emb_dict
 
-def embedding_lookup(sparse_embedding_dict, sparse_input_dict, sparse_feature_columns, reture_feat_list=(), to_list=False):
+def embedding_lookup(sparse_embedding_dict, sparse_input_dict, sparse_feature_columns, return_feat_list=(), mask_feat_list=(), to_list=False):
     """
     获取sparse-embedding
     Args:
@@ -126,10 +126,13 @@ def embedding_lookup(sparse_embedding_dict, sparse_input_dict, sparse_feature_co
     for fc in sparse_feature_columns:
         feature_name = fc.name
         embedding_name = fc.embedding_name
-        if (len(reture_feat_list) == 0 or feature_name in reture_feat_list):
-            lookup_idx = sparse_input_dict[feature_name]
-        
-        group_embedding_dict[fc.group_name].append(sparse_embedding_dict[embedding_name](lookup_idx))
+        if (len(return_feat_list) == 0 or feature_name in return_feat_list):
+            if fc.use_hash:
+                lookup_idx = Hash(fc.vocabulary_size, mask_zero=(feature_name in mask_feat_list), vocabulary_path=fc.vocabulary_path)(
+                    sparse_input_dict[feature_name])
+            else:
+                lookup_idx = sparse_input_dict[feature_name]
+            group_embedding_dict[fc.group_name].append(sparse_embedding_dict[embedding_name](lookup_idx))
     if to_list:
         return list(chain.from_iterable(group_embedding_dict.values()))
     return group_embedding_dict
@@ -149,7 +152,10 @@ def varlen_embedding_lookup(embedding_dict, sequence_input_dict, varlen_sparse_f
     for fc in varlen_sparse_feature_columns:
         feature_name = fc.name
         embedding_name = fc.embedding_name
-        lookup_idx = sequence_input_dict[feature_name]
+        if fc.use_hash:
+            lookup_idx = Hash(fc.vocabulary_size, mask_zero=True, vocabulary_path=fc.vocabulary_path)(sequence_input_dict[feature_name])
+        else:
+            lookup_idx = sequence_input_dict[feature_name]
         var_embedding_vec_dict[feature_name] = embedding_dict[embedding_name](lookup_idx)
     return var_embedding_vec_dict
 
