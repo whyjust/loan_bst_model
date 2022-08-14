@@ -5,13 +5,13 @@
 @Time    :   2022/08/07 16:15:49
 @Author  :   weiguang 
 '''
-from unicodedata import lookup
 import tensorflow as tf
 from itertools import chain
 from tensorflow.python.keras.layers import Input, Lambda, Embedding
 from tensorflow.python.keras.regularizers import l2
 from collections import OrderedDict, defaultdict
 from base_feats import DenseFeat, SparseFeat, VarLenSparseFeat
+from sequence import *
 
 def build_input_features(feature_columns, prefix=""):
     """
@@ -154,7 +154,7 @@ def varlen_embedding_lookup(embedding_dict, sequence_input_dict, varlen_sparse_f
     return var_embedding_vec_dict
 
 
-def get_varlen_pooling_list(embedding_dict, features, varlen_sparse_feature_columns, tolist=False):
+def get_varlen_pooling_list(embedding_dict, features, varlen_sparse_feature_columns, to_list=False):
     pooling_vec_list = defaultdict(list)
     for fc in varlen_sparse_feature_columns:
         feature_name = fc.name
@@ -163,4 +163,37 @@ def get_varlen_pooling_list(embedding_dict, features, varlen_sparse_feature_colu
 
         if feature_length_name is not None:
             if fc.weight_name is not None:
-                pass
+                seq_input = WeightedSequenceLayer(weight_normalization=fc.weight_norm)(
+                    [embedding_dict[feature_name], features[feature_length_name], features[fc.weight_name]]
+                )
+            else:
+                seq_input = embedding_dict[feature_name]
+            vec = SequencePoolingLayer(combiner, supports_masking=False)(
+                [seq_input, features[feature_length_name]]
+            )
+        else:
+            if fc.weight_name is not None:
+                seq_input = WeightedSequenceLayer(weight_normalization=fc.weight_norm, supports_masking=True)(
+                    [embedding_dict[feature_name], features[fc.weight_name]]
+                )
+            else:
+                seq_input = embedding_dict[feature_name]
+            vec = SequencePoolingLayer(combiner, supports_masking=True)(seq_input)
+        pooling_vec_list[fc.group_name].append(vec)
+    if to_list:
+        return chain.from_iterable(pooling_vec_list.values())
+    return pooling_vec_list
+
+def get_dense_input(features, feature_columns):
+    dense_feature_columns = list(
+        filter(lambda x: isinstance(x, DenseFeat), feature_columns) if feature_columns else []
+    )
+    dense_input_list = []
+    for fc in dense_feature_columns:
+        if fc.transform_fn is None:
+            dense_input_list.append(features[fc.name])
+        else:
+            transform_result = Lambda(fc.transform_fn)(features[fc.name])
+            dense_input_list.append(transform_result)
+    return dense_input_list
+
